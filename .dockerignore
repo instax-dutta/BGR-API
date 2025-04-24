@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.git
+.gitignore
+README.md
+render.yaml
+vercel.json
+api/
+tests/
