@@ -4,8 +4,10 @@ from PIL import Image
 import io
 import logging
 from flasgger import Swagger, swag_from
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes and origins
 
 swagger_template = {
     "swagger": "2.0",

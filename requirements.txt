@@ -4,3 +4,4 @@ pillow
 flasgger
 gunicorn
 onnxruntime
+flask_cors
