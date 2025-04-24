@@ -1,18 +1,51 @@
-from flask import Flask, request, send_file, jsonify, redirect
+from flask import Flask, request, send_file, jsonify
 from rembg import remove
 from PIL import Image
 import io
 import logging
-import random
-import string
+from flasgger import Swagger, swag_from
 
 app = Flask(__name__)
+Swagger(app)
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 
 @app.route('/remove-bg', methods=['POST'])
+@swag_from({
+    'parameters': [
+        {
+            'name': 'image',
+            'in': 'formData',
+            'type': 'file',
+            'required': True,
+            'description': 'Input image file (with background)'
+        },
+        {
+            'name': 'background',
+            'in': 'formData',
+            'type': 'file',
+            'required': False,
+            'description': 'Background image file (optional, replaces background)'
+        },
+        {
+            'name': 'color',
+            'in': 'formData',
+            'type': 'string',
+            'required': False,
+            'description': 'Solid background color (hex, e.g., #ffffff) if no background image provided'
+        }
+    ],
+    'responses': {
+        200: {
+            'description': 'Processed image as PNG',
+            'content': {'image/png': {}}
+        },
+        400: {'description': 'Invalid input'},
+        500: {'description': 'Processing error'}
+    }
+})
 def remove_bg():
+    """Remove background from image and optionally replace it with a user-provided background or color."""
     if 'image' not in request.files:
         return jsonify({'error': 'No image file provided.'}), 400
     file = request.files['image']
@@ -62,29 +95,16 @@ def remove_bg():
     except Exception as e:
         return jsonify({'error': f'Failed to process image: {str(e)}'}), 500
 
-@app.route('/fetch-image', methods=['GET'])
-def fetch_image():
-    style = request.args.get('style', 'random')
-    # Use Unsplash Source API (no API key needed)
-    # Example: https://source.unsplash.com/random/800x600/?professional
-    url = f"https://source.unsplash.com/random/800x600/?{style}"
-    # Option 1: Redirect user to Unsplash image (fast, no download)
-    return redirect(url)
-    # Option 2: Download and serve image directly (uncomment below if you want to serve the image bytes)
-    # try:
-    #     resp = requests.get(url)
-    #     resp.raise_for_status()
-    #     return send_file(io.BytesIO(resp.content), mimetype='image/jpeg', as_attachment=True, download_name=f'random-{style}.jpg')
-    # except Exception as e:
-    #     return jsonify({'error': f'Failed to fetch image: {str(e)}'}), 500
+@app.route('/')
+def docs_redirect():
+    return '<h2>See <a href="/apidocs">Swagger Docs</a></h2>'
 
-@app.errorhandler(404)
-def not_found(e):
-    return jsonify({'error': 'Endpoint not found.'}), 404
+app.config['SWAGGER'] = {
+    'title': 'Background Remover API',
+    'uiversion': 3
+}
 
-@app.errorhandler(500)
-def internal_error(e):
-    return jsonify({'error': 'Internal server error.'}), 500
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=7777, debug=True)
+if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
