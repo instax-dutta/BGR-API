@@ -3,3 +3,4 @@ rembg[lite]
 pillow
 flasgger
 gunicorn
+onnxruntime
