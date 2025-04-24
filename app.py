@@ -1,4 +1,4 @@
-from flask import Flask, request, send_file, jsonify
+from flask import Flask, request, send_file, jsonify, Response
 from rembg import remove
 from PIL import Image
 import io
@@ -6,33 +6,51 @@ import logging
 from flasgger import Swagger, swag_from
 
 app = Flask(__name__)
-Swagger(app)
+
+swagger_template = {
+    "swagger": "2.0",
+    "info": {
+        "title": "RMBG API",
+        "description": "RMBG API allows you to remove the background from an image and optionally replace it with a user-provided image or a solid color.\n\n**Base URL:**\n- Use the `/remove-bg` endpoint for background removal.\n- **API Domain:** https://rmbg.sdad.pro\n\n**How it works:**\n- POST to `/remove-bg` with the required and optional fields as described below.\n- Upload a foreground image (required).\n- Optionally upload a background image to use as the new background.\n- Optionally specify a solid color as a hex code (e.g. #ffffff) for the background.\n- The result is a PNG image with the background removed or replaced.\n\n**Example Endpoint Usage:**\n- `POST https://rmbg.sdad.pro/remove-bg`\n- Example: `curl -F \"image=@your_image.jpg\" -F \"background=@your_bg.jpg\" https://rmbg.sdad.pro/remove-bg --output result.png`\n- Swagger UI available at `/apidocs`.",
+        "version": "1.0.0",
+        "contact": {
+            "name": "RMBG API Maintainer",
+            "email": "support@example.com"
+        }
+    },
+    "schemes": ["https"]
+}
+Swagger(app, template=swagger_template)
 
 logging.basicConfig(level=logging.INFO)
 
 @app.route('/remove-bg', methods=['POST'])
 @swag_from({
+    'tags': ['Background Removal'],
+    'summary': 'Remove background from an image',
+    'description': 'Removes the background from the uploaded image and optionally replaces it with a user-provided background image or a solid color. Returns a PNG image.\n\n**Endpoint:** `https://rmbg.sdad.pro/remove-bg`',
+    'consumes': ['multipart/form-data'],
     'parameters': [
         {
             'name': 'image',
             'in': 'formData',
             'type': 'file',
             'required': True,
-            'description': 'Input image file (with background)'
+            'description': 'Foreground image file (the image whose background you want to remove). Supported formats: JPEG, PNG.'
         },
         {
             'name': 'background',
             'in': 'formData',
             'type': 'file',
             'required': False,
-            'description': 'Background image file (optional, replaces background)'
+            'description': 'Optional background image file (will be placed behind the foreground after background removal).'
         },
         {
             'name': 'color',
             'in': 'formData',
             'type': 'string',
             'required': False,
-            'description': 'Solid background color (hex, e.g., #ffffff) if no background image provided'
+            'description': 'Optional solid background color in hex format (e.g. #ffffff or #ffffffff for RGBA). Used if no background image is provided.'
         }
     ],
     'responses': {
@@ -42,7 +60,8 @@ logging.basicConfig(level=logging.INFO)
         },
         400: {'description': 'Invalid input'},
         500: {'description': 'Processing error'}
-    }
+    },
+    'produces': ['image/png']
 })
 def remove_bg():
     """Remove background from image and optionally replace it with a user-provided background or color."""
@@ -99,8 +118,37 @@ def remove_bg():
 def docs_redirect():
     return '<h2>See <a href="/apidocs">Swagger Docs</a></h2>'
 
+# --- Inject dark mode for Swagger UI ---
+@app.after_request
+def inject_swagger_darkmode(response):
+    if request.path.startswith('/apidocs') and response.content_type.startswith('text/html'):
+        dark_css = '''<style>
+body, .swagger-ui, .swagger-ui .topbar, .swagger-ui .info, .swagger-ui .scheme-container, .swagger-ui .opblock, .swagger-ui .response, .swagger-ui .parameters {
+  background: #181a1b !important;
+  color: #e8e6e3 !important;
+}
+.swagger-ui .topbar, .swagger-ui .info, .swagger-ui .scheme-container {
+  border-bottom: 1px solid #222;
+}
+.swagger-ui .opblock-tag, .swagger-ui .opblock-summary, .swagger-ui .opblock-section-header {
+  background: #222 !important;
+  color: #e8e6e3 !important;
+}
+.swagger-ui .btn, .swagger-ui select, .swagger-ui input {
+  background: #222 !important;
+  color: #e8e6e3 !important;
+  border: 1px solid #444 !important;
+}
+.swagger-ui .responses-inner, .swagger-ui .response {
+  background: #222 !important;
+  color: #e8e6e3 !important;
+}
+</style>'''
+        response.set_data(response.get_data(as_text=True).replace('</head>', dark_css + '</head>'))
+    return response
+
 app.config['SWAGGER'] = {
-    'title': 'Background Remover API',
+    'title': 'RMBG API',
     'uiversion': 3
 }
 
