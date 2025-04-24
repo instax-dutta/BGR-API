@@ -118,35 +118,6 @@ def remove_bg():
 def docs_redirect():
     return '<h2>See <a href="/apidocs">Swagger Docs</a></h2>'
 
-# --- Inject dark mode for Swagger UI ---
-@app.after_request
-def inject_swagger_darkmode(response):
-    if request.path.startswith('/apidocs') and response.content_type.startswith('text/html'):
-        dark_css = '''<style>
-body, .swagger-ui, .swagger-ui .topbar, .swagger-ui .info, .swagger-ui .scheme-container, .swagger-ui .opblock, .swagger-ui .response, .swagger-ui .parameters {
-  background: #181a1b !important;
-  color: #e8e6e3 !important;
-}
-.swagger-ui .topbar, .swagger-ui .info, .swagger-ui .scheme-container {
-  border-bottom: 1px solid #222;
-}
-.swagger-ui .opblock-tag, .swagger-ui .opblock-summary, .swagger-ui .opblock-section-header {
-  background: #222 !important;
-  color: #e8e6e3 !important;
-}
-.swagger-ui .btn, .swagger-ui select, .swagger-ui input {
-  background: #222 !important;
-  color: #e8e6e3 !important;
-  border: 1px solid #444 !important;
-}
-.swagger-ui .responses-inner, .swagger-ui .response {
-  background: #222 !important;
-  color: #e8e6e3 !important;
-}
-</style>'''
-        response.set_data(response.get_data(as_text=True).replace('</head>', dark_css + '</head>'))
-    return response
-
 app.config['SWAGGER'] = {
     'title': 'RMBG API',
     'uiversion': 3
